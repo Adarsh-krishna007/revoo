@@ -39,6 +39,7 @@ function App() {
    
     const {socket}=useSelector(state=>state.socket)
     const dispatch=useDispatch()
+    
  useEffect(()=>{
   if(userData){
     const socketIo=io(`${serverUrl}`,{
@@ -71,19 +72,19 @@ socket?.on("newNotification",(noti)=>{
 
   return (
     <Routes>
-      <Route path='/signup' element={!userData?<SignUp/>:<Navigate to={"/"}/>}/>
-       <Route path='/signin' element={!userData?<SignIn/>:<Navigate to={"/"}/>}/>
-        <Route path='/' element={userData?<Home/>:<Navigate to={"/signin"}/>}/>
-       <Route path='/forgot-password' element={!userData?<ForgotPassword/>:<Navigate to={"/"}/>}/>
-      <Route path='/profile/:userName' element={userData?<Profile/>:<Navigate to={"/signin"}/>}/>
-      <Route path='/story/:userName' element={userData?<Story/>:<Navigate to={"/signin"}/>}/>
-       <Route path='/upload' element={userData?<Upload/>:<Navigate to={"/signin"}/>}/>
-        <Route path='/search' element={userData?<Search/>:<Navigate to={"/signin"}/>}/>
-          <Route path='/editprofile' element={userData?<EditProfile/>:<Navigate to={"/signin"}/>}/>
-            <Route path='/messages' element={userData?<Messages/>:<Navigate to={"/signin"}/>}/>
-            <Route path='/messageArea' element={userData?<MessageArea/>:<Navigate to={"/signin"}/>}/>
-             <Route path='/notifications' element={userData?<Notifications/>:<Navigate to={"/signin"}/>}/>
-          <Route path='/loops' element={userData?<Loops/>:<Navigate to={"/signin"}/>}/>
+      <Route path='/signup' element={!userData ? <SignUp/> : <Navigate to={"/"}/> }/>
+      <Route path='/signin' element={!userData ? <SignIn/> : <Navigate to={"/"}/> }/>
+      <Route path='/' element={userData ? <Home/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/forgot-password' element={!userData ? <ForgotPassword/> : <Navigate to={"/"}/> }/>
+      <Route path='/profile/:userName' element={userData ? <Profile/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/story/:userName' element={userData ? <Story/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/upload' element={userData ? <Upload/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/search' element={userData ? <Search/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/editprofile' element={userData ? <EditProfile/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/messages' element={userData ? <Messages/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/messageArea' element={userData ? <MessageArea/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/notifications' element={userData ? <Notifications/> : <Navigate to={"/signin"}/> }/>
+      <Route path='/loops' element={userData ? <Loops/> : <Navigate to={"/signin"}/> }/>
     </Routes>
   )
 }
