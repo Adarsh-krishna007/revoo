@@ -2,15 +2,11 @@ import mongoose from "mongoose";
 
 const connectDb = async () => {
   try {
-    const connection = await mongoose.connect(process.env.MONGODB_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000, // Keep trying to send operations for 10 seconds
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-    });
+    console.log("🔗 Connecting to MongoDB...");
+    
+    const connection = await mongoose.connect(process.env.MONGODB_URL);
     
     console.log("✅ MongoDB connected successfully");
-    console.log(`   Host: ${connection.connection.host}`);
     console.log(`   Database: ${connection.connection.name}`);
     
     return connection;
@@ -19,13 +15,14 @@ const connectDb = async () => {
     
     // Add specific error messages for common issues
     if (error.name === 'MongooseServerSelectionError') {
-      console.error("   → MongoDB is not running or unreachable");
-      console.error("   → Check if MongoDB service is started");
-      console.error("   → Verify connection string in .env file");
+      console.error("\n🔧 Troubleshooting Steps:");
+      console.error("   1. Whitelist your IP in MongoDB Atlas");
+      console.error("   2. Check your username/password");
+      console.error("   3. Verify your cluster is running");
     }
     
-    // Exit process if database connection fails (for production)
-    process.exit(1);
+    // Don't exit in development, just throw error
+    throw error;
   }
 };
 
