@@ -37,20 +37,42 @@ function Upload() {
         setBackendMedia(file)
         setFrontendMedia(URL.createObjectURL(file))
     }
-
-const uploadPost=async ()=>{
-   
+// This stays in your React component (Upload.js)
+const uploadPost = async () => {
     try {
-        const formData=new FormData()
-        formData.append("caption",caption)
-        formData.append("mediaType",mediaType)
-        formData.append("media",backendMedia)
-        const result=await axios.post(`${serverUrl}/api/post/upload`,formData,{withCredentials:true})
-       dispatch(setPostData([...postData,result.data]))
-       setLoading(false)
-       navigate("/")
+        const formData = new FormData();
+        formData.append("caption", caption || "No caption");
+        formData.append("media", backendMedia);
+        formData.append("mediaType", mediaType);
+        
+        console.log("📤 Frontend: Sending upload request...");
+        console.log("FormData contents:");
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}:`, value instanceof File ? `File: ${value.name} (${value.type})` : value);
+        }
+        
+        const result = await axios.post(
+            `${serverUrl}/api/post/upload`, 
+            formData, 
+            {
+                withCredentials: true,
+                headers: { 
+                    'Content-Type': 'multipart/form-data'
+                },
+                timeout: 30000
+            }
+        );
+        
+        console.log("✅ Frontend: Upload success:", result.data);
+        dispatch(setPostData([...postData, result.data]));
+        setLoading(false);
+        navigate("/");
     } catch (error) {
-        console.log(error)
+        console.log("❌ Frontend UPLOAD ERROR - FULL DETAILS:");
+        console.log("Status:", error.response?.status);
+        console.log("Response Data (from backend):", error.response?.data);
+        console.log("Error Message:", error.message);
+        setLoading(false);
     }
 }
 
