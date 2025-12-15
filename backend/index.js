@@ -21,13 +21,8 @@ const PORT = process.env.PORT || 8000
 
 /* -------------------- MIDDLEWARES -------------------- */
 
-// CORS (works for localhost + Render)
-app.use(
-  cors({
-    origin: true, // allow all origins (safe for now)
-    credentials: true,
-  })
-)
+app.use(cors());
+
 
 app.use(express.json())
 app.use(cookieParser())
