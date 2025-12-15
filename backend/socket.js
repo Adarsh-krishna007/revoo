@@ -1,15 +1,24 @@
 import http from "http"
 import express from "express"
-
-// Add Socket.IO import
+import cors from "cors" // Import cors middleware
 import { Server } from "socket.io"
 
 const app = express()
 const server = http.createServer(app)
 
-// Fix Socket.IO CORS configuration
-app.use(cors());
+// Initialize Socket.IO server with all origins allowed
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Allow all origins
+        methods: ["GET", "POST"]
+    }
+})
 
+// Configure CORS for Express - allow all origins
+app.use(cors({
+    origin: "*",
+    credentials: true
+}))
 
 const userSocketMap = {}
 
