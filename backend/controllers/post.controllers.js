@@ -1,84 +1,160 @@
+import uploadOnCloudinary from "../config/cloudinary.js";
+import Notification from "../models/notification.model.js";
+import Post from "../models/post.model.js";
+import User from "../models/user.model.js";
+import { getSocketId, io } from "../socket.js";
+
+// Export each function individually
 export const uploadPost = async (req, res) => {
   try {
-    console.log("=== UPLOAD POST CONTROLLER ===");
-    console.log("File received:", req.file);
-    console.log("Request body:", req.body);
-    console.log("User ID:", req.userId);
+    console.log("FILE:", req.file);
 
     const { caption, mediaType } = req.body;
 
     if (!req.file) {
-      console.log("❌ No file uploaded");
-      return res.status(400).json({ 
-        message: "Media file is required",
-        code: "NO_MEDIA"
-      });
+      return res.status(400).json({ message: "media is required" });
     }
 
-    if (!caption || caption.trim().length === 0) {
-      console.log("❌ Caption missing");
-      return res.status(400).json({ 
-        message: "Caption is required",
-        code: "NO_CAPTION" 
-      });
-    }
+    const cloudinaryResult = await uploadOnCloudinary(req.file.path);
 
-    // Upload to Cloudinary
-    let cloudinaryResult;
-    try {
-      console.log("Uploading to Cloudinary...");
-      
-      // If using buffer upload (memory storage)
-      if (req.file.buffer) {
-        cloudinaryResult = await uploadOnCloudinary(req.file.buffer, {
-          resource_type: req.file.mimetype.startsWith('video/') ? 'video' : 'image'
-        });
-      } 
-      // If using disk storage
-      else if (req.file.path) {
-        cloudinaryResult = await uploadOnCloudinary(req.file.path);
-      } 
-      else {
-        throw new Error("No file data found for upload");
-      }
-      
-      console.log("Cloudinary result:", cloudinaryResult);
-    } catch (cloudinaryError) {
-      console.error("Cloudinary upload failed:", cloudinaryError);
-      return res.status(500).json({ 
-        message: "Failed to upload media to Cloudinary",
-        error: cloudinaryError.message 
-      });
-    }
-
-    // Create post in database
     const post = await Post.create({
-      caption: caption.trim(),
+      caption,
       media: cloudinaryResult.secure_url || cloudinaryResult,
-      mediaType: mediaType || (req.file.mimetype.startsWith('video/') ? 'video' : 'image'),
+      mediaType,
       author: req.userId
     });
 
-    // Update user's posts
     const user = await User.findById(req.userId);
     user.posts.push(post._id);
     await user.save();
 
-    // Get populated post for response
     const populatedPost = await Post.findById(post._id)
       .populate("author", "name userName profileImage");
 
-    console.log("✅ Post created successfully:", populatedPost._id);
-    
     return res.status(201).json(populatedPost);
 
   } catch (error) {
-    console.error("❌ UPLOAD POST ERROR:", error);
-    console.error("Error stack:", error.stack);
-    
-    return res.status(500).json({ 
-      message: "Internal server error",
-      error: error.message 
-    });
+    console.error("UPLOAD POST ERROR:", error);
+    return res.status(500).json({ message: error.message });
   }
-}
+};
+
+export const getAllPosts = async (req, res) => {
+  try {
+    const posts = await Post.find({})
+      .populate("author", "name userName profileImage")
+      .populate("comments.author", "name userName profileImage")
+      .sort({ createdAt: -1 });
+    return res.status(200).json(posts);
+  } catch (error) {
+    return res.status(500).json({ message: `getallpost error ${error}` });
+  }
+};
+
+export const like = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(400).json({ message: "post not found" });
+    }
+
+    const alreadyLiked = post.likes.some(id => id.toString() == req.userId.toString());
+
+    if (alreadyLiked) {
+      post.likes = post.likes.filter(id => id.toString() != req.userId.toString());
+    } else {
+      post.likes.push(req.userId);
+      if (post.author._id != req.userId) {
+        const notification = await Notification.create({
+          sender: req.userId,
+          receiver: post.author._id,
+          type: "like",
+          post: post._id,
+          message: "liked your post"
+        });
+        const populatedNotification = await Notification.findById(notification._id).populate("sender receiver post");
+        const receiverSocketId = getSocketId(post.author._id);
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("newNotification", populatedNotification);
+        }
+      }
+    }
+
+    await post.save();
+    await post.populate("author", "name userName profileImage");
+    io.emit("likedPost", {
+      postId: post._id,
+      likes: post.likes
+    });
+    return res.status(200).json(post);
+  } catch (error) {
+    return res.status(500).json({ message: `likepost error ${error}` });
+  }
+};
+
+export const comment = async (req, res) => {
+  try {
+    const { message } = req.body;
+    const postId = req.params.postId;
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(400).json({ message: "post not found" });
+    }
+    
+    post.comments.push({
+      author: req.userId,
+      message
+    });
+    
+    if (post.author._id != req.userId) {
+      const notification = await Notification.create({
+        sender: req.userId,
+        receiver: post.author._id,
+        type: "comment",
+        post: post._id,
+        message: "commented on your post"
+      });
+      const populatedNotification = await Notification.findById(notification._id).populate("sender receiver post");
+      const receiverSocketId = getSocketId(post.author._id);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("newNotification", populatedNotification);
+      }
+    }
+    
+    await post.save();
+    await post.populate("author", "name userName profileImage");
+    await post.populate("comments.author");
+    io.emit("commentedPost", {
+      postId: post._id,
+      comments: post.comments
+    });
+    return res.status(200).json(post);
+  } catch (error) {
+    return res.status(500).json({ message: `comment post error ${error}` });
+  }
+};
+
+export const saved = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const user = await User.findById(req.userId);
+
+    const alreadySaved = user.saved.some(id => id.toString() == postId.toString());
+
+    if (alreadySaved) {
+      user.saved = user.saved.filter(id => id.toString() != postId.toString());
+    } else {
+      user.saved.push(postId);
+    }
+    
+    await user.save();
+    user.populate("saved");
+    return res.status(200).json(user);
+  } catch (error) {
+    return res.status(500).json({ message: `saved error ${error}` });
+  }
+};
+
+// Alternative: Export all at once (use either this OR individual exports above)
+// export { uploadPost, getAllPosts, like, comment, saved };
