@@ -8,19 +8,8 @@ const app = express()
 const server = http.createServer(app)
 
 // Fix Socket.IO CORS configuration
-const io = new Server(server, {
-    cors: {
-        origin: [
-            "http://localhost:5173",
-            "https://revoo-1.onrender.com",  // Add your production frontend
-            "https://backend-mt3z.onrender.com" // Also allow backend origin
-        ],
-        methods: ["GET", "POST"],
-        credentials: true,  // Important: Add this line
-        allowedHeaders: ["Content-Type", "Authorization"]
-    },
-    transports: ["websocket", "polling"]  // Add this line for better compatibility
-})
+app.use(cors());
+
 
 const userSocketMap = {}
 
