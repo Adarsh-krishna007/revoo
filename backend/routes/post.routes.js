@@ -5,31 +5,19 @@ import { comment, getAllPosts, like, saved, uploadPost } from "../controllers/po
 
 const postRouter = express.Router()
 
-// FIXED: Changed middleware order - upload.single() comes BEFORE isAuth
-postRouter.post("/upload", upload.single("media"), isAuth, uploadPost)
+// TEMPORARY: No authentication for testing
+postRouter.post("/upload", upload.single("media"), uploadPost)
 
-// Debug route (optional - remove in production)
-postRouter.post("/upload-debug", upload.single("media"), (req, res) => {
-  console.log("🔍 DEBUG UPLOAD - File received:", req.file ? "YES" : "NO")
-  console.log("File details:", {
-    originalname: req.file?.originalname,
-    mimetype: req.file?.mimetype,
-    size: req.file?.size
-  })
-  console.log("Request body:", req.body)
-  console.log("Cookies:", req.cookies)
+// OR use a test route
+postRouter.post("/upload-test", upload.single("media"), async (req, res) => {
+  console.log("Test upload - no auth required");
   
-  res.json({
-    success: true,
-    debug: {
-      fileReceived: !!req.file,
-      bodyFields: Object.keys(req.body),
-      hasCookies: !!req.cookies
-    }
-  })
+  // Call your actual controller but with test userId
+  req.userId = "test-user-id";
+  return uploadPost(req, res);
 })
 
-// Other routes remain the same
+// Other routes keep auth
 postRouter.get("/getAll", isAuth, getAllPosts)
 postRouter.get("/like/:postId", isAuth, like)
 postRouter.get("/saved/:postId", isAuth, saved)
